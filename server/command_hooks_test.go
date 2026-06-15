@@ -16,6 +16,10 @@ func TestExtractLoomShareURL(t *testing.T) {
 			want:    "https://loom.com/share/abc123def456",
 		},
 		{
+			message: "https://www.loom.com/embed/abc123def456",
+			want:    "https://www.loom.com/share/abc123def456",
+		},
+		{
 			message: "no loom here",
 			want:    "",
 		},

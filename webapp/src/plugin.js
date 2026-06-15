@@ -3,7 +3,7 @@ import {Client4} from 'mattermost-redux/client';
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-import PostType from './components/post_type/post_type';
+import PostType from './components/post_type';
 import Root from './components/root';
 import LoomClient from './client/loom_client';
 import {getPluginURL} from './utils';
@@ -39,14 +39,6 @@ function getErrorMessage(error) {
     }
 }
 
-class LoomRoot extends React.PureComponent {
-    render() {
-        return (
-            <Root client={this.props.client}/>
-        );
-    }
-}
-
 export default class LoomPlugin {
     initialize(registry, store) {
         const config = getConfig(store.getState());
@@ -74,14 +66,10 @@ export default class LoomPlugin {
             });
         };
 
-        const PostTypeWrapper = (props) => (
-            <PostType {...props}/>
-        );
-
         registry.registerRootComponent(() => (
-            <LoomRoot client={client}/>
+            <Root client={client}/>
         ));
-        registry.registerPostTypeComponent('custom_loom', PostTypeWrapper);
+        registry.registerPostTypeComponent('custom_loom', PostType);
         registry.registerFileUploadMethod(
             loomIcon,
             () => startRecording(),

@@ -1,27 +1,27 @@
+import {createInstance, setup} from '@loomhq/record-sdk';
+import {isSupported} from '@loomhq/record-sdk/is-supported';
 import {Client4} from 'mattermost-redux/client';
 
 import {getPluginURL, parseJSONResponse} from '../utils';
 
 const BUTTON_ID = 'loom-record-sdk-button';
 
-const DEFAULT_EMBED_WIDTH = 480;
-
-async function createLoomInstance(recordSDK, config) {
+async function createLoomInstance(config) {
     const sdkConfig = {
         publicAppId: config.LoomPublicAppId,
         environment: config.LoomEnvironment || 'production',
         config: {insertButtonText: 'Share in Mattermost'},
     };
 
-    if (typeof recordSDK.createInstance === 'function') {
-        return recordSDK.createInstance({
+    if (typeof createInstance === 'function') {
+        return createInstance({
             mode: 'standard',
             ...sdkConfig,
         });
     }
 
-    if (typeof recordSDK.setup === 'function') {
-        return recordSDK.setup(sdkConfig);
+    if (typeof setup === 'function') {
+        return setup(sdkConfig);
     }
 
     throw new Error('loom-sdk-missing');
@@ -32,7 +32,6 @@ export default class LoomClient {
         this.config = null;
         this.sdkButton = null;
         this.setupPromise = null;
-        this.onVideoInsert = null;
         this.channelId = '';
         this.rootId = '';
     }
@@ -54,10 +53,6 @@ export default class LoomClient {
             this.config = config;
             return config;
         });
-    }
-
-    setInsertHandler(handler) {
-        this.onVideoInsert = handler;
     }
 
     async ensureSDK() {
@@ -85,17 +80,12 @@ export default class LoomClient {
 
         await this.waitForButton();
 
-        const [isSupportedModule, recordSDK] = await Promise.all([
-            import('@loomhq/record-sdk/is-supported'),
-            import('@loomhq/record-sdk'),
-        ]);
-
-        const support = await isSupportedModule.isSupported();
+        const support = await isSupported();
         if (!support.supported) {
             throw new Error(support.error || 'loom-not-supported');
         }
 
-        const instance = await createLoomInstance(recordSDK, config);
+        const instance = await createLoomInstance(config);
         const configureButton = instance.configureButton;
         if (typeof configureButton !== 'function') {
             throw new Error('loom-sdk-unavailable');
@@ -111,7 +101,7 @@ export default class LoomClient {
         return sdkButton;
     }
 
-    waitForButton(attempts = 20) {
+    waitForButton(attempts = 50) {
         return new Promise((resolve, reject) => {
             const tryFind = (remaining) => {
                 if (document.getElementById(BUTTON_ID)) {
@@ -132,12 +122,6 @@ export default class LoomClient {
         if (!video?.sharedUrl) {
             return;
         }
-
-        if (this.onVideoInsert) {
-            this.onVideoInsert(video, this.channelId, this.rootId);
-            return;
-        }
-
         this.postVideo(video, this.channelId, this.rootId);
     }
 
@@ -149,7 +133,7 @@ export default class LoomClient {
         const post = {
             channel_id: channelId,
             root_id: rootId,
-            message: video.title || 'Loom video',
+            message: video.sharedUrl,
             type: 'custom_loom',
             props: {
                 loom_video: true,
@@ -183,12 +167,15 @@ export default class LoomClient {
             throw new Error('loom-sdk-unavailable');
         }
 
-        sdkButton.openPreRecordPanel();
-    }
+        const button = document.getElementById(BUTTON_ID);
+        if (typeof sdkButton.openPreRecordPanel === 'function') {
+            sdkButton.openPreRecordPanel();
+            return;
+        }
 
-    getEmbedWidth() {
-        const width = parseInt(this.config?.DefaultEmbedWidth, 10);
-        return width > 0 ? width : DEFAULT_EMBED_WIDTH;
+        if (button) {
+            button.click();
+        }
     }
 }
 

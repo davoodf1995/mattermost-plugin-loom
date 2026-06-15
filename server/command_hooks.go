@@ -12,7 +12,7 @@ import (
 
 const postTypeLoom = "custom_loom"
 
-var loomShareURLPattern = regexp.MustCompile(`https?://(?:www\.)?loom\.com/share/[a-zA-Z0-9]+`)
+var loomShareURLPattern = regexp.MustCompile(`https?://(?:www\.)?loom\.com/(?:share|embed)/[a-zA-Z0-9_-]+`)
 
 // MessageHasBeenPosted upgrades plain Loom share links into rich custom_loom posts.
 func (p *Plugin) MessageHasBeenPosted(_ *plugin.Context, post *model.Post) {
@@ -21,9 +21,10 @@ func (p *Plugin) MessageHasBeenPosted(_ *plugin.Context, post *model.Post) {
 	}
 
 	if post.Type == postTypeLoom {
-		normalizeLoomPost(post)
-		if _, err := p.API.UpdatePost(post); err != nil {
-			p.API.LogError("failed to normalize loom post", "post_id", post.Id, "error", err.Error())
+		if normalizeLoomPost(post) {
+			if _, err := p.API.UpdatePost(post); err != nil {
+				p.API.LogError("failed to normalize loom post", "post_id", post.Id, "error", err.Error())
+			}
 		}
 		return
 	}
@@ -41,9 +42,6 @@ func (p *Plugin) MessageHasBeenPosted(_ *plugin.Context, post *model.Post) {
 	updatedPost.Type = postTypeLoom
 	updatedPost.AddProp("loom_video", true)
 	updatedPost.AddProp("sharedUrl", sharedURL)
-	if updatedPost.Message == sharedURL {
-		updatedPost.Message = "Loom video"
-	}
 
 	if _, err := p.API.UpdatePost(updatedPost); err != nil {
 		p.API.LogError("failed to upgrade loom post", "post_id", post.Id, "error", err.Error())
@@ -52,19 +50,33 @@ func (p *Plugin) MessageHasBeenPosted(_ *plugin.Context, post *model.Post) {
 
 func extractLoomShareURL(message string) string {
 	match := loomShareURLPattern.FindString(strings.TrimSpace(message))
+	if match == "" {
+		return ""
+	}
+
+	if strings.Contains(match, "/embed/") {
+		return strings.Replace(match, "/embed/", "/share/", 1)
+	}
+
 	return match
 }
 
-func normalizeLoomPost(post *model.Post) {
+func normalizeLoomPost(post *model.Post) bool {
+	changed := false
+
 	if post.GetProp("loom_video") == nil {
 		post.AddProp("loom_video", true)
+		changed = true
 	}
 
 	if sharedURL, ok := post.GetProp("sharedUrl").(string); !ok || sharedURL == "" {
 		if url := extractLoomShareURL(post.Message); url != "" {
 			post.AddProp("sharedUrl", url)
+			changed = true
 		}
 	}
+
+	return changed
 }
 
 func (p *Plugin) registerCommands() error {

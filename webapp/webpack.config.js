@@ -111,5 +111,9 @@ module.exports = {
     },
     devtool,
     mode,
+    optimization: {
+        splitChunks: false,
+        runtimeChunk: false,
+    },
     plugins,
 };
