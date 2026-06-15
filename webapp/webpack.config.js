@@ -105,8 +105,9 @@ module.exports = {
     output: {
         devtoolNamespace: PLUGIN_ID,
         path: path.join(__dirname, '/dist'),
-        publicPath: '/',
+        publicPath: `/static/plugins/${PLUGIN_ID}/`,
         filename: 'main.js',
+        chunkFilename: '[id].main.js',
     },
     devtool,
     mode,
