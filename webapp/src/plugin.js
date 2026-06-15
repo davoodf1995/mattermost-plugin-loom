@@ -1,5 +1,6 @@
 import {FormattedMessage} from 'react-intl';
 import {Client4} from 'mattermost-redux/client';
+import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import PostType from './components/post_type/post_type';
@@ -7,10 +8,19 @@ import Root from './components/root';
 import LoomClient from './client/loom_client';
 import {getPluginURL} from './utils';
 
-const loomIcon = <i className='icon fa fa-video-camera'/>;
+const React = window.React;
+
+const loomIcon = (
+    <img
+        src={`${getPluginURL()}/public/loom.png`}
+        alt='Loom'
+        style={{width: '24px', height: '24px'}}
+    />
+);
 
 function getErrorMessage(error) {
-    switch (error?.message) {
+    const message = error?.message || '';
+    switch (message) {
     case 'loom-not-configured':
         return 'Loom is not configured. Ask your admin to add the Loom Public App ID in System Console → Plugins → Loom.';
     case 'loom-record-disabled':
@@ -22,8 +32,18 @@ function getErrorMessage(error) {
     case 'third-party-cookies-disabled':
     case 'no-media-streams-support':
         return 'Loom recording is not supported in this browser. Try Chrome or Firefox with third-party cookies enabled.';
+    case 'loom-plugin-unavailable':
+        return 'Loom plugin server is not responding. Disable and re-enable the plugin, then hard-refresh the browser (Ctrl+Shift+R).';
     default:
-        return 'Could not start Loom recording.';
+        return message || 'Could not start Loom recording.';
+    }
+}
+
+class LoomRoot extends React.PureComponent {
+    render() {
+        return (
+            <Root client={this.props.client}/>
+        );
     }
 }
 
@@ -35,9 +55,20 @@ export default class LoomPlugin {
         }
 
         const client = new LoomClient();
+        const pluginURL = getPluginURL();
+
+        const resolveChannelId = (channelId = '') => {
+            return channelId || getCurrentChannelId(store.getState()) || '';
+        };
 
         const startRecording = (channelId = '', rootId = '') => {
-            client.startRecording(channelId, rootId).catch((error) => {
+            const resolvedChannelId = resolveChannelId(channelId);
+            if (!resolvedChannelId) {
+                window.alert('Open a channel before recording a Loom video.');
+                return;
+            }
+
+            client.startRecording(resolvedChannelId, rootId).catch((error) => {
                 // eslint-disable-next-line no-alert
                 window.alert(getErrorMessage(error));
             });
@@ -48,7 +79,7 @@ export default class LoomPlugin {
         );
 
         registry.registerRootComponent(() => (
-            <Root client={client}/>
+            <LoomRoot client={client}/>
         ));
         registry.registerPostTypeComponent('custom_loom', PostTypeWrapper);
         registry.registerFileUploadMethod(
@@ -60,7 +91,8 @@ export default class LoomPlugin {
             />,
         );
         registry.registerSlashCommandWillBePostedHook((message, args) => {
-            if (message.trim() === '/loom record') {
+            const trimmed = message.trim();
+            if (trimmed === '/loom record') {
                 startRecording(args.channel_id, args.root_id);
                 return {};
             }
@@ -75,7 +107,7 @@ export default class LoomPlugin {
             loomIcon,
         );
         registry.registerAppBarComponent({
-            iconUrl: `${getPluginURL()}/public/loom-icon.svg`,
+            iconUrl: `${pluginURL}/public/loom.png`,
             action: (channelId) => startRecording(channelId),
             tooltipText: (
                 <FormattedMessage
@@ -84,5 +116,11 @@ export default class LoomPlugin {
                 />
             ),
         });
+        registry.registerChannelHeaderButtonAction(
+            loomIcon,
+            (channel) => startRecording(channel?.id || channel),
+            'Record Loom video',
+            'Record Loom video',
+        );
     }
 }

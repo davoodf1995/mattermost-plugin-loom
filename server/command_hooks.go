@@ -7,6 +7,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/pkg/errors"
 )
 
 const postTypeLoom = "custom_loom"
@@ -66,7 +67,22 @@ func normalizeLoomPost(post *model.Post) {
 	}
 }
 
-func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, error) {
+func (p *Plugin) registerCommands() error {
+	if err := p.API.RegisterCommand(&model.Command{
+		Trigger:              "loom",
+		AutoComplete:         true,
+		AutoCompleteDesc:     "Record and share Loom videos in Mattermost",
+		AutoCompleteHint:     "[help|record]",
+		AutocompleteIconData: p.getAutocompleteIconData(),
+		IconURL:              p.getCommandIconURL(),
+		DisplayName:          "Loom",
+	}); err != nil {
+		return errors.Wrap(err, "failed to register loom command")
+	}
+	return nil
+}
+
+func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	fields := strings.Fields(args.Command)
 	subcommand := ""
 	if len(fields) > 1 {
@@ -80,12 +96,17 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			Text: strings.TrimSpace(`
 **Loom plugin**
 
-Use the **Record Loom** button in the post textbox or app bar to record a video.
+Use the **Record Loom** button in the post textbox, app bar, or channel header to record a video.
 
 Paste a Loom share link (https://www.loom.com/share/...) in a channel to show a rich inline player.
 
 **Setup:** System Console → Plugins → Loom → add your Loom Public App ID from [dev.loom.com](https://dev.loom.com).
 `),
+		}, nil
+	case "record":
+		return &model.CommandResponse{
+			ResponseType: model.CommandResponseTypeEphemeral,
+			Text:         "Use the **Record Loom** button in the post textbox, app bar, or channel header to start recording.",
 		}, nil
 	default:
 		return &model.CommandResponse{
