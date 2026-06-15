@@ -10,6 +10,16 @@ import {getPluginURL, normalizeChannelId} from './utils';
 
 const React = window.React;
 
+let sharedLoomClient = null;
+
+class LoomAppRoot extends React.PureComponent {
+    render() {
+        return (
+            <Root client={sharedLoomClient}/>
+        );
+    }
+}
+
 const loomIcon = (
     <img
         src={`${getPluginURL()}/public/loom.png`}
@@ -39,14 +49,6 @@ function getErrorMessage(error) {
     }
 }
 
-class LoomRoot extends React.PureComponent {
-    render() {
-        return (
-            <Root client={this.props.client}/>
-        );
-    }
-}
-
 export default class LoomPlugin {
     initialize(registry, store) {
         const config = getConfig(store.getState());
@@ -54,7 +56,8 @@ export default class LoomPlugin {
             Client4.setUrl(config.SiteURL);
         }
 
-        const client = new LoomClient();
+        sharedLoomClient = new LoomClient();
+        const client = sharedLoomClient;
         const pluginURL = getPluginURL();
 
         const resolveChannelId = (channelLike = '') => {
@@ -64,20 +67,22 @@ export default class LoomPlugin {
         const startRecording = (channelLike = '', rootId = '') => {
             const resolvedChannelId = resolveChannelId(channelLike);
             if (!resolvedChannelId) {
-                window.alert('Open a channel before recording a Loom video.');
+                client.showOverlay({
+                    title: 'No channel selected',
+                    message: 'Open a channel before recording a Loom video.',
+                    showFallback: false,
+                });
                 return;
             }
 
             client.startRecording(resolvedChannelId, rootId).catch((error) => {
-                client.resetSDK();
-                // eslint-disable-next-line no-alert
-                window.alert(getErrorMessage(error));
+                // Overlay already shows the error; keep console detail for admins.
+                // eslint-disable-next-line no-console
+                console.error('Loom record failed:', getErrorMessage(error));
             });
         };
 
-        registry.registerRootComponent(() => (
-            <LoomRoot client={client}/>
-        ));
+        registry.registerRootComponent(LoomAppRoot);
         registry.registerPostTypeComponent('custom_loom', PostType);
         registry.registerFileUploadMethod(
             loomIcon,

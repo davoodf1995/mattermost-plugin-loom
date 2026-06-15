@@ -35,6 +35,23 @@ export default class LoomClient {
         this.setupPromise = null;
         this.channelId = '';
         this.rootId = '';
+        this.overlayListener = null;
+    }
+
+    setOverlayListener(listener) {
+        this.overlayListener = listener;
+    }
+
+    showOverlay(overlay) {
+        if (this.overlayListener) {
+            this.overlayListener(overlay);
+        }
+    }
+
+    clearOverlay() {
+        if (this.overlayListener) {
+            this.overlayListener(null);
+        }
     }
 
     loadConfig() {
@@ -72,7 +89,7 @@ export default class LoomClient {
         this.setupPromise = withTimeout(
             this.initializeSDK(),
             SDK_INIT_TIMEOUT_MS,
-            'Loom recorder timed out. Check that third-party cookies are enabled and your Mattermost domain is allowed in dev.loom.com.',
+            'Loom recorder timed out. Your admin may need to allow www.loom.com in Mattermost CSP and register this site at dev.loom.com.',
         ).catch((error) => {
             this.setupPromise = null;
             throw error;
@@ -110,7 +127,11 @@ export default class LoomClient {
 
         const sdkButton = configureButton({element: button});
         sdkButton.on('insert-click', (video) => {
+            this.clearOverlay();
             this.handleVideoInsert(video);
+        });
+        sdkButton.on('cancel', () => {
+            this.clearOverlay();
         });
 
         this.sdkButton = sdkButton;
@@ -139,8 +160,12 @@ export default class LoomClient {
             return;
         }
         this.postVideo(video, this.channelId, this.rootId).catch((error) => {
-            // eslint-disable-next-line no-alert
-            window.alert(error.message || 'Failed to post Loom video.');
+            this.showOverlay({
+                title: 'Could not post Loom video',
+                message: 'The recording finished but Mattermost could not create the post.',
+                error: error.message || 'Unknown error',
+                showFallback: false,
+            });
         });
     }
 
@@ -173,23 +198,46 @@ export default class LoomClient {
         this.channelId = channelId;
         this.rootId = rootId;
 
-        const config = await this.loadConfig();
-        if (!config?.LoomPublicAppId) {
-            throw new Error('loom-not-configured');
-        }
-        if (config.EnableRecordButton === false) {
-            throw new Error('loom-record-disabled');
-        }
+        this.showOverlay({
+            title: 'Starting Loom recorder',
+            message: 'Connecting to Loom. A recording panel should appear on screen in a few seconds.',
+            showFallback: true,
+        });
 
-        const sdkButton = await this.ensureSDK();
-        const button = document.getElementById(BUTTON_ID);
+        try {
+            const config = await this.loadConfig();
+            if (!config?.LoomPublicAppId) {
+                throw new Error('loom-not-configured');
+            }
+            if (config.EnableRecordButton === false) {
+                throw new Error('loom-record-disabled');
+            }
 
-        if (typeof sdkButton.openPreRecordPanel === 'function') {
-            sdkButton.openPreRecordPanel();
-        } else if (button) {
-            button.click();
-        } else {
-            throw new Error('loom-sdk-unavailable');
+            const sdkButton = await this.ensureSDK();
+            const button = document.getElementById(BUTTON_ID);
+
+            if (typeof sdkButton.openPreRecordPanel === 'function') {
+                sdkButton.openPreRecordPanel();
+            } else if (button) {
+                button.click();
+            } else {
+                throw new Error('loom-sdk-unavailable');
+            }
+
+            this.showOverlay({
+                title: 'Loom recorder ready',
+                message: 'Use the Loom panel to record. When finished, click Share in Mattermost to post the video to this channel.',
+                showFallback: true,
+            });
+        } catch (error) {
+            this.resetSDK();
+            this.showOverlay({
+                title: 'Loom recorder failed',
+                message: 'In-app recording could not start. You can still record on Loom.com and paste the share link in Mattermost.',
+                error: error.message || 'Unknown error',
+                showFallback: true,
+            });
+            throw error;
         }
     }
 }

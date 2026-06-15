@@ -5,7 +5,7 @@
     "homepage_url": "https://github.com/davoodf1995/mattermost-plugin-loom",
     "support_url": "https://github.com/davoodf1995/mattermost-plugin-loom/issues",
     "icon_path": "assets/loom.png",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "min_server_version": "11.0.0",
     "server": {
         "executables": {
@@ -21,7 +21,7 @@
     },
     "settings_schema": {
         "header": "Create a Loom SDK application at [dev.loom.com](https://dev.loom.com) and add your Mattermost site URL as an allowed domain. See the plugin README for setup steps.",
-        "footer": "",
+        "footer": "In-app recording requires Loom Public App ID, your Mattermost domain registered at dev.loom.com, and CSP allowing www.loom.com (connect-src, frame-src). Pasting Loom share links works without recording.",
         "settings": [
             {
                 "key": "LoomPublicAppId",
