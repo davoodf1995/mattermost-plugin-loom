@@ -1,0 +1,24 @@
+.loom-post {
+    margin: 8px 0;
+    max-width: 100%;
+}
+
+.loom-post iframe {
+    border: 0;
+    border-radius: 8px;
+    max-width: 100%;
+}
+
+.loom-post__loading {
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: 13px;
+}
+
+.loom-post__fallback a {
+    color: var(--link-color);
+    word-break: break-all;
+}
+
+.loom-record-button {
+    display: none;
+}

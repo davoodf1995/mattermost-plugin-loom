@@ -1,0 +1,70 @@
+{
+    "id": "com.mattermost.loom",
+    "name": "Loom",
+    "description": "Record and share Loom videos directly in Mattermost channels with rich inline embeds.",
+    "homepage_url": "https://github.com/davoodf1995/mattermost-plugin-loom",
+    "support_url": "https://github.com/davoodf1995/mattermost-plugin-loom/issues",
+    "icon_path": "assets/loom.svg",
+    "version": "1.0.0",
+    "min_server_version": "11.0.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "darwin-arm64": "server/dist/plugin-darwin-arm64",
+            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "Create a Loom SDK application at [dev.loom.com](https://dev.loom.com) and add your Mattermost site URL as an allowed domain. See the plugin README for setup steps.",
+        "footer": "",
+        "settings": [
+            {
+                "key": "LoomPublicAppId",
+                "display_name": "Loom Public App ID",
+                "type": "text",
+                "help_text": "Public App ID from your Loom SDK Standard application (sandbox for localhost, live for production).",
+                "default": ""
+            },
+            {
+                "key": "LoomEnvironment",
+                "display_name": "Loom SDK Environment",
+                "type": "dropdown",
+                "help_text": "SDK environment. Use production for live Mattermost servers.",
+                "default": "production",
+                "options": [
+                    {
+                        "display_name": "Production",
+                        "value": "production"
+                    },
+                    {
+                        "display_name": "Staging",
+                        "value": "staging"
+                    },
+                    {
+                        "display_name": "Development",
+                        "value": "development"
+                    }
+                ]
+            },
+            {
+                "key": "EnableRecordButton",
+                "display_name": "Enable Record Button",
+                "type": "bool",
+                "help_text": "Show the Loom record button in the post textbox, app bar, and main menu.",
+                "default": true
+            },
+            {
+                "key": "DefaultEmbedWidth",
+                "display_name": "Default Embed Width (px)",
+                "type": "number",
+                "help_text": "Width of inline Loom video players in channel posts.",
+                "default": 480
+            }
+        ]
+    }
+}
