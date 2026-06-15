@@ -6,7 +6,7 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import PostType from './components/post_type';
 import Root from './components/root';
 import LoomClient from './client/loom_client';
-import {getPluginURL} from './utils';
+import {getPluginURL, normalizeChannelId} from './utils';
 
 const React = window.React;
 
@@ -39,6 +39,14 @@ function getErrorMessage(error) {
     }
 }
 
+class LoomRoot extends React.PureComponent {
+    render() {
+        return (
+            <Root client={this.props.client}/>
+        );
+    }
+}
+
 export default class LoomPlugin {
     initialize(registry, store) {
         const config = getConfig(store.getState());
@@ -49,25 +57,26 @@ export default class LoomPlugin {
         const client = new LoomClient();
         const pluginURL = getPluginURL();
 
-        const resolveChannelId = (channelId = '') => {
-            return channelId || getCurrentChannelId(store.getState()) || '';
+        const resolveChannelId = (channelLike = '') => {
+            return normalizeChannelId(channelLike) || getCurrentChannelId(store.getState()) || '';
         };
 
-        const startRecording = (channelId = '', rootId = '') => {
-            const resolvedChannelId = resolveChannelId(channelId);
+        const startRecording = (channelLike = '', rootId = '') => {
+            const resolvedChannelId = resolveChannelId(channelLike);
             if (!resolvedChannelId) {
                 window.alert('Open a channel before recording a Loom video.');
                 return;
             }
 
             client.startRecording(resolvedChannelId, rootId).catch((error) => {
+                client.resetSDK();
                 // eslint-disable-next-line no-alert
                 window.alert(getErrorMessage(error));
             });
         };
 
         registry.registerRootComponent(() => (
-            <Root client={client}/>
+            <LoomRoot client={client}/>
         ));
         registry.registerPostTypeComponent('custom_loom', PostType);
         registry.registerFileUploadMethod(
@@ -96,7 +105,7 @@ export default class LoomPlugin {
         );
         registry.registerAppBarComponent({
             iconUrl: `${pluginURL}/public/loom.png`,
-            action: (channelId) => startRecording(channelId),
+            action: (channelLike) => startRecording(channelLike),
             tooltipText: (
                 <FormattedMessage
                     id='plugin.loom.app_bar'
@@ -106,7 +115,7 @@ export default class LoomPlugin {
         });
         registry.registerChannelHeaderButtonAction(
             loomIcon,
-            (channel) => startRecording(channel?.id || channel),
+            (channel) => startRecording(channel),
             'Record Loom video',
             'Record Loom video',
         );

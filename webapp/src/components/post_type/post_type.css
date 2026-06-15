@@ -40,7 +40,3 @@
     color: var(--link-color);
     word-break: break-all;
 }
-
-.loom-record-button {
-    display: none;
-}

@@ -2,9 +2,10 @@ import {createInstance, setup} from '@loomhq/record-sdk';
 import {isSupported} from '@loomhq/record-sdk/is-supported';
 import {Client4} from 'mattermost-redux/client';
 
-import {getPluginURL, parseJSONResponse} from '../utils';
+import {parseJSONResponse, pluginFetch, withTimeout} from '../utils';
 
 const BUTTON_ID = 'loom-record-sdk-button';
+const SDK_INIT_TIMEOUT_MS = 30000;
 
 async function createLoomInstance(config) {
     const sdkConfig = {
@@ -41,9 +42,8 @@ export default class LoomClient {
             return Promise.resolve(this.config);
         }
 
-        return fetch(`${getPluginURL()}/config`, {
+        return pluginFetch('/config', {
             headers: {Accept: 'application/json'},
-            credentials: 'same-origin',
         }).then((response) => {
             if (!response.ok) {
                 throw new Error('loom-plugin-unavailable');
@@ -55,6 +55,11 @@ export default class LoomClient {
         });
     }
 
+    resetSDK() {
+        this.sdkButton = null;
+        this.setupPromise = null;
+    }
+
     async ensureSDK() {
         if (this.sdkButton) {
             return this.sdkButton;
@@ -64,7 +69,11 @@ export default class LoomClient {
             return this.setupPromise;
         }
 
-        this.setupPromise = this.initializeSDK().catch((error) => {
+        this.setupPromise = withTimeout(
+            this.initializeSDK(),
+            SDK_INIT_TIMEOUT_MS,
+            'Loom recorder timed out. Check that third-party cookies are enabled and your Mattermost domain is allowed in dev.loom.com.',
+        ).catch((error) => {
             this.setupPromise = null;
             throw error;
         });
@@ -74,8 +83,11 @@ export default class LoomClient {
 
     async initializeSDK() {
         const config = await this.loadConfig();
-        if (!config?.LoomPublicAppId || !config.EnableRecordButton) {
-            return null;
+        if (!config?.LoomPublicAppId) {
+            throw new Error('loom-not-configured');
+        }
+        if (config.EnableRecordButton === false) {
+            throw new Error('loom-record-disabled');
         }
 
         await this.waitForButton();
@@ -92,6 +104,10 @@ export default class LoomClient {
         }
 
         const button = document.getElementById(BUTTON_ID);
+        if (!button) {
+            throw new Error('loom-sdk-unavailable');
+        }
+
         const sdkButton = configureButton({element: button});
         sdkButton.on('insert-click', (video) => {
             this.handleVideoInsert(video);
@@ -122,12 +138,15 @@ export default class LoomClient {
         if (!video?.sharedUrl) {
             return;
         }
-        this.postVideo(video, this.channelId, this.rootId);
+        this.postVideo(video, this.channelId, this.rootId).catch((error) => {
+            // eslint-disable-next-line no-alert
+            window.alert(error.message || 'Failed to post Loom video.');
+        });
     }
 
     async postVideo(video, channelId, rootId = '') {
         if (!channelId) {
-            throw new Error('loom-channel-required');
+            throw new Error('Open a channel before sharing a Loom video.');
         }
 
         const post = {
@@ -158,23 +177,19 @@ export default class LoomClient {
         if (!config?.LoomPublicAppId) {
             throw new Error('loom-not-configured');
         }
-        if (!config.EnableRecordButton) {
+        if (config.EnableRecordButton === false) {
             throw new Error('loom-record-disabled');
         }
 
         const sdkButton = await this.ensureSDK();
-        if (!sdkButton) {
-            throw new Error('loom-sdk-unavailable');
-        }
-
         const button = document.getElementById(BUTTON_ID);
+
         if (typeof sdkButton.openPreRecordPanel === 'function') {
             sdkButton.openPreRecordPanel();
-            return;
-        }
-
-        if (button) {
+        } else if (button) {
             button.click();
+        } else {
+            throw new Error('loom-sdk-unavailable');
         }
     }
 }

@@ -1,4 +1,4 @@
-import {getPluginURL, parseJSONResponse} from '../../utils';
+import {getPluginURL, parseJSONResponse, pluginFetch} from '../../utils';
 import {getPostSharedURL, loomShareToEmbedURL} from '../../loom_utils';
 
 import './post_type.css';
@@ -23,9 +23,8 @@ export default class PostType extends React.PureComponent {
     }
 
     loadConfig() {
-        return fetch(`${getPluginURL()}/config`, {
+        return pluginFetch('/config', {
             headers: {Accept: 'application/json'},
-            credentials: 'same-origin',
         }).then(parseJSONResponse).then((config) => {
             const width = parseInt(config?.DefaultEmbedWidth, 10);
             if (width > 0) {
