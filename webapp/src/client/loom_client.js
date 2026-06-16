@@ -233,7 +233,7 @@ export default class LoomClient {
             this.resetSDK();
             this.showOverlay({
                 title: 'Loom recorder failed',
-                message: 'In-app recording could not start. You can still record on Loom.com and paste the share link in Mattermost.',
+                message: 'In-app recording could not start. Install the Loom Chrome extension or desktop app, record there, then paste the share link in Mattermost.',
                 error: error.message || 'Unknown error',
                 showFallback: true,
             });

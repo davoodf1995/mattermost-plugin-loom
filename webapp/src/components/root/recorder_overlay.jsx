@@ -3,7 +3,8 @@ import './recorder_overlay.css';
 const React = window.React;
 const PropTypes = window.PropTypes;
 
-const LOOM_RECORD_URL = 'https://www.loom.com/record';
+const LOOM_CHROME_EXTENSION_URL = 'https://chromewebstore.google.com/detail/loom-%E2%80%93-screen-recorder-sc/liecbddmkiiihnedobmlmillhodjkdmb';
+const LOOM_DOWNLOAD_URL = 'https://www.atlassian.com/software/loom/download';
 
 export default class LoomRecorderOverlay extends React.PureComponent {
     static propTypes = {
@@ -14,8 +15,12 @@ export default class LoomRecorderOverlay extends React.PureComponent {
         onClose: PropTypes.func.isRequired,
     }
 
-    openLoomSite = () => {
-        window.open(LOOM_RECORD_URL, '_blank', 'noopener,noreferrer');
+    openChromeExtension = () => {
+        window.open(LOOM_CHROME_EXTENSION_URL, '_blank', 'noopener,noreferrer');
+    }
+
+    openDownloadPage = () => {
+        window.open(LOOM_DOWNLOAD_URL, '_blank', 'noopener,noreferrer');
     }
 
     render() {
@@ -29,23 +34,33 @@ export default class LoomRecorderOverlay extends React.PureComponent {
                     )}
                     {this.props.showFallback && (
                         <p className='loom-overlay__hint'>
-                            {'If the Loom panel does not appear, your Mattermost admin must allow '}
+                            {'Loom has no web record page. Use the Chrome extension or desktop app, then paste the '}
+                            <strong>{'loom.com/share/...'}</strong>
+                            {' link in Mattermost. For in-app recording, your admin must allow '}
                             <strong>{'www.loom.com'}</strong>
-                            {' in Content-Security-Policy '}
-                            {'(connect-src, frame-src) and register '}
+                            {' in CSP and register '}
                             <strong>{window.location.origin}</strong>
                             {' at dev.loom.com.'}
                         </p>
                     )}
                     <div className='loom-overlay__actions'>
                         {this.props.showFallback && (
-                            <button
-                                type='button'
-                                className='loom-overlay__button loom-overlay__button--primary'
-                                onClick={this.openLoomSite}
-                            >
-                                {'Record on Loom.com'}
-                            </button>
+                            <>
+                                <button
+                                    type='button'
+                                    className='loom-overlay__button loom-overlay__button--primary'
+                                    onClick={this.openChromeExtension}
+                                >
+                                    {'Get Loom for Chrome'}
+                                </button>
+                                <button
+                                    type='button'
+                                    className='loom-overlay__button'
+                                    onClick={this.openDownloadPage}
+                                >
+                                    {'Download Loom app'}
+                                </button>
+                            </>
                         )}
                         <button
                             type='button'

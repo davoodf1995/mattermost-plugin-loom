@@ -6,7 +6,7 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import PostType from './components/post_type';
 import Root from './components/root';
 import LoomClient from './client/loom_client';
-import {getPluginURL, normalizeChannelId} from './utils';
+import {ensureLoomReferrerSupport, getPluginURL, normalizeChannelId} from './utils';
 
 const React = window.React;
 
@@ -51,6 +51,8 @@ function getErrorMessage(error) {
 
 export default class LoomPlugin {
     initialize(registry, store) {
+        ensureLoomReferrerSupport();
+
         const config = getConfig(store.getState());
         if (config?.SiteURL) {
             Client4.setUrl(config.SiteURL);

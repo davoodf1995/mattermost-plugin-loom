@@ -50,6 +50,49 @@ export function pluginFetch(path, options = {}) {
     });
 }
 
+const LOOM_HOST_PATTERN = /(^|\.)loom\.com/i;
+
+function applyLoomIframeReferrerPolicy(iframe) {
+    if (!iframe?.src || !LOOM_HOST_PATTERN.test(iframe.src)) {
+        return;
+    }
+    iframe.referrerPolicy = 'origin';
+}
+
+// Loom validates the embedding domain via the Referer header. Mattermost sets
+// Referrer-Policy: no-referrer, which strips Referer on cross-origin iframes → 403.
+export function ensureLoomReferrerSupport() {
+    if (ensureLoomReferrerSupport.initialized) {
+        return;
+    }
+    ensureLoomReferrerSupport.initialized = true;
+
+    if (!document.querySelector('meta[name="referrer"]')) {
+        const meta = document.createElement('meta');
+        meta.name = 'referrer';
+        meta.content = 'origin';
+        document.head.appendChild(meta);
+    }
+
+    document.querySelectorAll('iframe').forEach(applyLoomIframeReferrerPolicy);
+
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    return;
+                }
+                if (node.tagName === 'IFRAME') {
+                    applyLoomIframeReferrerPolicy(node);
+                }
+                node.querySelectorAll?.('iframe').forEach(applyLoomIframeReferrerPolicy);
+            });
+        });
+    });
+    observer.observe(document.documentElement, {childList: true, subtree: true});
+}
+ensureLoomReferrerSupport.initialized = false;
+
 export function withTimeout(promise, ms, message) {
     return new Promise((resolve, reject) => {
         const timer = window.setTimeout(() => {

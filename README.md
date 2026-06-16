@@ -50,6 +50,7 @@ After recording, click **Share in Mattermost** in the Loom preview to post the v
 
 ## Limitations
 
+- Loom has **no web record page** (`loom.com/record` does not exist). Fallback recording uses the Chrome extension or desktop app
 - Loom recording requires a supported browser (Chrome, Firefox, Edge) with **third-party cookies** enabled
 - Recording is **desktop only** — mobile browsers are not supported by the Loom SDK
 - Your Mattermost domain must be registered in the Loom developer portal
